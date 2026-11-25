@@ -126,6 +126,43 @@ remote = /your-folder
 3. Run `archive-now.bat` once to see the report (`--dry-run` to preview without changes).
 4. Run `archive-install-task.bat` to register the archive task.
 
+## 🔐 FTPS
+
+The agent only speaks **explicit FTPS** (`AUTH TLS` → `PBSZ` / `PROT P`, still on port 21). Implicit FTPS on port 990 is not used.
+
+**Default policy: no encryption, no sync.** With `allow_plaintext = false`, if the server has no TLS the agent writes one WARN line (`logs\last-run.txt` says it did nothing), does not log in, does not send the password and does not touch any file. Exit code 0.
+
+### Enable it on the server
+
+**FileZilla Server**
+
+- 0.9.x: `Edit → Settings → SSL/TLS settings`, enable *Enable SSL/TLS support* and *Allow explicit FTP over TLS*, then *Generate new certificate*
+- 1.x: `Server → TLS settings`, enable *Enable explicit FTP over TLS* and pick or create a certificate
+- Recommended: also force TLS so plaintext connections are refused outright
+
+**IIS FTP**
+
+- IIS Manager → site → *FTP SSL Settings* → choose a certificate → allow (or require) SSL connections
+
+### Configure the client
+
+1. `tls = auto` encrypts whenever the server supports it; `require` turns "no TLS" into an error
+2. Self-signed certificate: set `tls_verify = false` first and run `test-connection.bat`
+3. The report prints the certificate SHA256; put those 64 hex characters into `tls_fingerprint` and set `tls_verify = true` again — that pins the certificate and is much safer than leaving validation off
+4. With a CA-issued certificate just keep `tls_verify = true` and leave the fingerprint empty
+
+### Troubleshooting
+
+| Symptom | Cause / fix |
+| --- | --- |
+| Log says "server is not encrypted" (AUTH TLS returns 5xx) | FTPS is not enabled on the server yet |
+| "Certificate validation failed" plus a fingerprint | Self-signed: pin the fingerprint or temporarily set `tls_verify = false` |
+| Login fails with `530` | Wrong user name or password |
+| Login works but transfers time out | Passive-mode data ports are blocked; open the PASV range in the firewall |
+| Want to force encryption | Set `tls = require` |
+
+> Use `allow_plaintext = true` for LAN or test environments only; the agent logs a warning every time.
+> `logs\test-report.txt` (written by `test-connection.bat`) shows the server banner, `FEAT` and whether TLS is active — check it first when something fails.
 ## ⚙️ Configuration
 
 ### `[server]`

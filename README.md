@@ -126,6 +126,43 @@ remote = /你的目录
 3. 双击 `archive-now.bat` 先手动跑一次看报告（加 `--dry-run` 只看不动）。
 4. 双击 `archive-install-task.bat` 注册归档任务。
 
+## 🔐 FTPS 加密
+
+程序只走**显式 FTPS**（`AUTH TLS` → `PBSZ` / `PROT P`，仍然用 21 端口），不依赖隐式 FTPS 的 990 端口。
+
+**默认策略：没加密就不同步。** `allow_plaintext = false` 时，如果服务器没开 TLS，程序只写一条 WARN 日志（`logs\last-run.txt` 里写「未执行：服务器未启用加密」），不登录、不发送账号密码、不做任何同步，退出码 0——密码不会在公网上裸奔。
+
+### 服务器端怎么开
+
+**FileZilla Server**
+
+- 0.9.x：`Edit → Settings → SSL/TLS settings`，勾选 *Enable SSL/TLS support* 和 *Allow explicit FTP over TLS*，点 *Generate new certificate* 生成证书
+- 1.x：`Server → TLS settings`，启用 *Enable explicit FTP over TLS*，选择或生成证书
+- 建议同时勾上「不允许未加密的 FTP」（Force explicit），明文连接会被服务器直接拒绝
+
+**IIS FTP**
+
+- IIS 管理器 → 站点 → *FTP SSL 设置* → 选择证书 → 「允许」或「需要」SSL 连接
+
+### 本机怎么配
+
+1. `tls = auto`：服务器支持就加密；改成 `require` 则没加密时直接报错
+2. 自签证书：先把 `tls_verify = false`，双击 `test-connection.bat`
+3. 报告里会打印「证书 SHA256 指纹」，把这串 64 位十六进制填进 `tls_fingerprint`，再把 `tls_verify` 改回 `true`——这样是按指纹锁定，比一直关校验安全得多
+4. 服务器用受信任 CA 的证书（比如正式域名证书）时，直接 `tls_verify = true`，不用填指纹
+
+### 报错对照
+
+| 现象 | 原因与处理 |
+| --- | --- |
+| 日志「服务器未启用加密」（AUTH TLS 返回 5xx） | 服务器还没开 FTPS，按上面开一下 |
+| 「证书校验失败」并打印指纹 | 自签证书：把指纹填进 `tls_fingerprint`，或临时 `tls_verify = false` |
+| 登录失败 `530` | 账号或密码不对 |
+| 能登录但传文件超时 | 被动模式数据端口被防火墙挡了，放行 PASV 端口范围 |
+| 想强制加密 | 把 `tls` 改成 `require` |
+
+> `allow_plaintext = true` 只建议在内网或测试环境用；程序每次都会在日志里记一条警告。
+> `test-connection.bat` 生成的 `logs\test-report.txt` 里能看到服务器 banner、`FEAT` 和是否启用了 TLS，排错时先看它。
 ## ⚙️ 配置说明
 
 ### `[server]`
