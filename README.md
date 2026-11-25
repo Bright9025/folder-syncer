@@ -64,7 +64,7 @@ folder-syncer/
 │   │   └── Util.cs             # 路径、glob、编码等工具
 │   ├── devtools/               # 开发自测：模拟 FTP 服务器、清理工具、测试脚本
 │   ├── build.bat               # 一键编译到 release\upload 和 release\archive
-│   └── pack-release.ps1        # 打包 GitHub Releases 用的 zip
+│   └── pack-release.ps1        # 打包三个 Releases zip（完整 / 上传端 / 保存端）
 ├── release/
 │   ├── upload/                 # 上传端（目标 PC）：exe + config.ini + bat
 │   └── archive/                # 保存端（常开机）：exe + archive.ini + bat
@@ -198,7 +198,7 @@ a.txt	14	639312164783098361
 code\build.bat                     :: 编译到 release\upload 和 release\archive
 code\devtools\run-tests.ps1        :: 上传端自测（MLSD/MFMT/回退/未加密跳过）
 code\devtools\run-tests-3tier.ps1  :: 三端自测（上传 -> 归档 -> 不重传）
-powershell -File code\pack-release.ps1 -Version 1.0.0   :: 打 Releases 用的 zip -> dist\
+powershell -File code\pack-release.ps1 -Version 1.0.0   :: 打 3 个 Releases 包 -> dist\v1.0.0\
 ```
 
 `code\devtools\MockFtpServer.cs` 是一个最小 FTP 服务器（支持 MLSD/MFMT/可选 TLS），测试脚本会自动编译并启动它，全部在本机完成，不会碰真实服务器。

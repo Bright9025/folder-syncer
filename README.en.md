@@ -64,7 +64,7 @@ folder-syncer/
 │   │   └── Util.cs             # Paths, globs, encodings
 │   ├── devtools/               # Self-test: mock FTP server, cleanup tool, test scripts
 │   ├── build.bat               # One-click build into release\upload and release\archive
-│   └── pack-release.ps1        # Zip for GitHub Releases
+│   └── pack-release.ps1        # Build the three release zips (all / uploader / archiver)
 ├── release/
 │   ├── upload/                 # Uploader package: exe + config.ini + .bat files
 │   └── archive/                # Archiver package: exe + archive.ini + .bat files
@@ -198,7 +198,7 @@ sub/b.txt	6	639312164783098361
 code\build.bat                     :: build into release\upload and release\archive
 code\devtools\run-tests.ps1        :: uploader tests (MLSD/MFMT/fallback/unencrypted skip)
 code\devtools\run-tests-3tier.ps1  :: three-tier tests (upload -> archive -> no re-upload)
-powershell -File code\pack-release.ps1 -Version 1.0.0   :: zip for Releases -> dist\
+powershell -File code\pack-release.ps1 -Version 1.0.0   :: three release zips -> dist\v1.0.0\
 ```
 
 `code\devtools\MockFtpServer.cs` is a minimal FTP server (MLSD, MFMT, optional TLS). The test scripts build and launch it locally, so nothing touches a real server.
