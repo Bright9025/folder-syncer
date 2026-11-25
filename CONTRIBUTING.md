@@ -9,7 +9,7 @@
 1. 先阅读 [README.md](./README.md) 和 [English README](./README.en.md)，确认当前功能与已知边界。
 2. 搜索现有 [Issues](https://github.com/Bright9025/dir-sync-agent/issues)，避免重复报告。
 3. 较大的功能改动请先开 Issue 讨论方向，不要直接提交一个难以评审的大 PR。
-4. **不要提交任何真实配置、账号或数据**：`config.ini`、`archive.ini`、`logs/`、`state/`、服务器 IP、FTP 密码、证书指纹都属于本地环境信息，已在 `.gitignore` 中排除。
+4. **不要提交任何真实配置、账号或数据**：`release/**/config.ini`、`release/**/archive.ini` 是随程序提供的空模板，只能保留占位符；真实的服务器地址、账号、密码、证书指纹请放在仓库外。`logs/`、`state/`、`dist/` 已在 `.gitignore` 中排除。
 
 ## 开发环境
 

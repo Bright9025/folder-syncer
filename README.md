@@ -35,7 +35,7 @@
 ```text
  上传端（目标 PC）              服务器（空间很小）                保存端（常开机）
 ┌────────────────┐   FTPS   ┌──────────────────────┐   FTPS   ┌──────────────────┐
-│ D:\课件         │ ───────▶ │ /课件（中转文件）      │ ───────▶ │ D:\存档\课件       │
+│ D:\你的目录     │ ───────▶ │ /你的目录（中转文件）  │ ───────▶ │ D:\你的存档       │
 │ state\（增量）  │          │ /_syncagent/*.tsv    │          │ _history\（旧版）  │
 └────────────────┘          │ （只留清单，几十 KB）  │          └──────────────────┘
         ▲                   └──────────────────────┘
@@ -89,7 +89,7 @@ dir-sync-agent/
 ### 上传端（目标 PC）
 
 1. 把 `release\upload\` 整个目录拷到目标机（建议放 D 盘，C 盘重置也不影响）。exe 已随仓库提供，也可以从 [Releases](https://github.com/Bright9025/dir-sync-agent/releases) 下载打好的 zip。
-2. 复制 `config.example.ini` 为 `config.ini`，填写服务器地址、账号密码和要同步的目录：
+2. 打开 `config.ini`，填写服务器地址、账号密码和要同步的目录：
 
 ```ini
 [server]
@@ -97,10 +97,10 @@ host = 你的服务器IP或域名
 user = 你的FTP账号
 password = 你的FTP密码
 
-[job:课件]
+[job:你的任务]
 enabled = true
-local = D:\课件
-remote = /课件
+local = D:\你的目录
+remote = /你的目录
 mode = upload
 ```
 
@@ -110,17 +110,17 @@ mode = upload
 ### 保存端（常开机）
 
 1. 把 `release\archive\` 拷到那台常开的电脑。
-2. 复制 `archive.example.ini` 为 `archive.ini`，`[server]` 与上传端保持一致，改好存档目录：
+2. 打开 `archive.ini`，`[server]` 与上传端保持一致，改好存档目录：
 
 ```ini
 [schedule]
 mode = archive
 repeat_minutes = 30
 
-[job:课件]
+[job:你的任务]
 enabled = true
-local = D:\存档\课件
-remote = /课件
+local = D:\你的存档
+remote = /你的目录
 ```
 
 3. 双击 `archive-now.bat` 先手动跑一次看报告（加 `--dry-run` 只看不动）。

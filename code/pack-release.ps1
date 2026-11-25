@@ -27,7 +27,7 @@ foreach ($name in 'upload', 'archive') {
     $dst = Join-Path $stage ("dir-sync-agent\" + $name)
     New-Item -ItemType Directory -Force $dst | Out-Null
     Get-ChildItem $src -File | Where-Object {
-        $_.Name -notin @('config.ini', 'archive.ini') -and $_.Name -notlike 'logs*'
+        $_.Name -notlike 'logs*' -and $_.Name -ne 'state'
     } | ForEach-Object { Copy-Item $_.FullName $dst -Force }
 }
 

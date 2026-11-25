@@ -34,10 +34,10 @@ A silent, popup-free Windows directory sync tool: push folders to your own serve
 
 ```text
  Uploader (target PC)          Server (small disk)                Archiver (always-on)
-┌────────────────┐   FTPS   ┌──────────────────────┐   FTPS   ┌──────────────────┐
-│ D:\docs         │ ───────▶ │ /docs (transient)    │ ───────▶ │ D:\archive\docs   │
-│ state\ (delta)  │          │ /_syncagent/*.tsv    │          │ _history\ (older) │
-└────────────────┘          │ (manifest only, KBs) │          └──────────────────┘
+┌─────────────────┐  FTPS   ┌──────────────────────┐   FTPS   ┌───────────────────┐
+│ D:\your-folder  │ ──────▶ │ /your-folder         │ ───────▶ │ D:\your-archive   │
+│ state\ (delta)  │         │ /_syncagent/*.tsv    │          │ _history\ (older) │
+└─────────────────┘         │ (manifest only, KBs) │          └───────────────────┘
         ▲                   └──────────────────────┘
         └──────────── reads manifest, skips archived files ────────────┘
 ```
@@ -89,7 +89,7 @@ dir-sync-agent/
 ### Uploader (target PC)
 
 1. Copy `release\upload\` to the target machine (put it on drive D if the system drive gets wiped). The exe ships with the repo; a ready-made zip is also attached to [Releases](https://github.com/Bright9025/dir-sync-agent/releases).
-2. Copy `config.example.ini` to `config.ini` and fill in server, credentials and folders:
+2. Open `config.ini` and fill in server, credentials and folders:
 
 ```ini
 [server]
@@ -97,10 +97,10 @@ host = your-server-or-domain
 user = your-ftp-user
 password = your-ftp-password
 
-[job:docs]
+[job:your-job]
 enabled = true
-local = D:\docs
-remote = /docs
+local = D:\your-folder
+remote = /your-folder
 mode = upload
 ```
 
@@ -110,17 +110,17 @@ mode = upload
 ### Archiver (always-on PC)
 
 1. Copy `release\archive\` to the always-on machine.
-2. Copy `archive.example.ini` to `archive.ini`, keep `[server]` identical to the uploader and set the archive folder:
+2. Open `archive.ini`, keep `[server]` identical to the uploader and set the archive folder:
 
 ```ini
 [schedule]
 mode = archive
 repeat_minutes = 30
 
-[job:docs]
+[job:your-job]
 enabled = true
-local = D:\archive\docs
-remote = /docs
+local = D:\your-archive
+remote = /your-folder
 ```
 
 3. Run `archive-now.bat` once to see the report (`--dry-run` to preview without changes).

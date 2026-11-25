@@ -3,9 +3,8 @@ logs/
 state/
 *.log
 
-# ---- 本地真实配置（含服务器地址与账号密码，不要提交）----
-release/**/config.ini
-release/**/archive.ini
+# ---- 注意：release/**/config.ini 和 archive.ini 是随程序提供的空模板，会一起提交；
+#      真实服务器地址 / 账号 / 密码请放在仓库外，不要写进这两个文件再提交 ----
 
 # ---- 编译产物：release 里的 exe 会一起提交，方便直接从仓库取用；自测用临时 exe 不提交 ----
 code/devtools/*.exe
