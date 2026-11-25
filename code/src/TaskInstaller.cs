@@ -5,7 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal static class TaskInstaller
     {
@@ -16,7 +16,7 @@ namespace SyncAgent
             sb.Append("<?xml version=\"1.0\" encoding=\"UTF-16\"?>\r\n");
             sb.Append("<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\r\n");
             sb.Append("  <RegistrationInfo>\r\n");
-            sb.Append("    <Description>把本地目录同步到服务器的后台程序（SyncAgent）</Description>\r\n");
+            sb.Append("    <Description>把本地目录同步到服务器的后台程序（FolderSyncer）</Description>\r\n");
             sb.Append("  </RegistrationInfo>\r\n");
             sb.Append("  <Triggers>\r\n");
 
@@ -122,12 +122,12 @@ namespace SyncAgent
         {
             ok = false;
             string xml = BuildXml(cfg, exePath);
-            string tmp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "syncagent-task-" + Guid.NewGuid().ToString("N") + ".xml");
+            string tmp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "foldersyncer-task-" + Guid.NewGuid().ToString("N") + ".xml");
             StringBuilder report = new StringBuilder();
             try
             {
                 File.WriteAllText(tmp, xml, new UnicodeEncoding(false, true));
-                string outFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "syncagent-schtasks-" + Guid.NewGuid().ToString("N") + ".txt");
+                string outFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "foldersyncer-schtasks-" + Guid.NewGuid().ToString("N") + ".txt");
                 string args = "/c schtasks /Create /TN \"" + cfg.Schedule.TaskName + "\" /XML \"" + tmp + "\" /F > \"" + outFile + "\" 2>&1";
                 string output;
                 int code = Run("cmd.exe", args, out output);
@@ -168,7 +168,7 @@ namespace SyncAgent
         public static string Uninstall(AppConfig cfg, out bool ok)
         {
             ok = false;
-            string outFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "syncagent-schtasks-" + Guid.NewGuid().ToString("N") + ".txt");
+            string outFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "foldersyncer-schtasks-" + Guid.NewGuid().ToString("N") + ".txt");
             string args = "/c schtasks /Delete /TN \"" + cfg.Schedule.TaskName + "\" /F > \"" + outFile + "\" 2>&1";
             string output;
             int code = Run("cmd.exe", args, out output);

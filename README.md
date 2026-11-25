@@ -1,19 +1,19 @@
 <div align="center">
 
-# 🔁 Dir Sync Agent
+# 🔁 Folder Syncer
 
-[English](https://github.com/Bright9025/dir-sync-agent/blob/main/README.en.md) | [简体中文](https://github.com/Bright9025/dir-sync-agent/blob/main/README.md)
+[English](https://github.com/Bright9025/folder-syncer/blob/main/README.en.md) | [简体中文](https://github.com/Bright9025/folder-syncer/blob/main/README.md)
 
 一个纯后台、永不弹窗的 Windows 目录同步工具：把指定目录经 **FTPS** 推到自建服务器，再由一台常开的电脑定时拉回本地归档，服务器上只保留清单和中转文件。
 
 [![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078d4?logo=windows&logoColor=white)](https://www.microsoft.com/windows)
 [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-%E2%89%A54.5-512bd4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-22b394.svg)](https://github.com/Bright9025/dir-sync-agent/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22b394.svg)](https://github.com/Bright9025/folder-syncer/blob/main/LICENSE)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
 
 > 无安装 · 无第三方依赖 · 无窗口 · 无托盘 · 无弹窗
 
-> 当前版本：**v1.0.0** · [GitHub Releases](https://github.com/Bright9025/dir-sync-agent/releases)
+> 当前版本：**v1.0.0** · [GitHub Releases](https://github.com/Bright9025/folder-syncer/releases)
 
 </div>
 
@@ -23,7 +23,7 @@
 - 🪶 **零依赖单文件** – 用 Windows 自带的 .NET Framework 编译，62 KB 一个 exe，不需要 Python / Node / SSH 客户端，也不需要管理员权限常驻。
 - 📤 **上传端（`--sync`）** – 把本地目录增量推到服务器；只传新增和变化的文件，上传用「临时文件 + 改名」，中断不会写坏服务器上的旧版本。
 - 📥 **保存端（`--archive`）** – 把服务器文件拉回本地存档，**校验大小和内容后**才删除服务器副本，同名文件内容变化时旧版本自动进 `_history\`。
-- 🧾 **已归档清单** – 保存端在服务器上维护一份 `_syncagent\<目录>.tsv`，记下哪些文件已经安全落地；上传端读到清单就跳过，**服务器删了也不会重传**。
+- 🧾 **已归档清单** – 保存端在服务器上维护一份 `_foldersyncer\<目录>.tsv`，记下哪些文件已经安全落地；上传端读到清单就跳过，**服务器删了也不会重传**。
 - 🗂️ **服务器只当中转站** – 文件被拉走后立刻删除，服务器上长期只有几十 KB 的清单，适合空间很小的小服务器。
 - 🧩 **多任务** – 一个 `[job:名字]` 就是一组「本地目录 → 服务器目录」，可以配任意组。
 - 🚫 **默认不删别人的文件** – 只清理自己上传过、后来在本地被删掉的文件；服务器上原有文件默认不动。
@@ -36,7 +36,7 @@
  上传端（目标 PC）              服务器（空间很小）                保存端（常开机）
 ┌────────────────┐   FTPS   ┌──────────────────────┐   FTPS   ┌──────────────────┐
 │ D:\你的目录     │ ───────▶ │ /你的目录（中转文件）  │ ───────▶ │ D:\你的存档       │
-│ state\（增量）  │          │ /_syncagent/*.tsv    │          │ _history\（旧版）  │
+│ state\（增量）  │          │ /_foldersyncer/*.tsv    │          │ _history\（旧版）  │
 └────────────────┘          │ （只留清单，几十 KB）  │          └──────────────────┘
         ▲                   └──────────────────────┘
         └──────── 读清单，已归档的文件不再重传 ────────┘
@@ -49,7 +49,7 @@
 ## 📁 项目结构
 
 ```text
-dir-sync-agent/
+folder-syncer/
 ├── code/
 │   ├── src/                    # 主程序源码（C#，C# 5 语法，兼容 .NET Framework 4.5+）
 │   │   ├── Program.cs          # 入口：命令行、--sync / --archive / --test / --install-task
@@ -57,7 +57,7 @@ dir-sync-agent/
 │   │   ├── ArchiveEngine.cs    # 保存端：下载、校验、删除服务器副本、写清单
 │   │   ├── FtpClient.cs        # 自研 FTP/FTPS 客户端（AUTH TLS、PBSZ/PROT、MLSD、MFMT）
 │   │   ├── Manifest.cs         # 已归档清单的读写
-│   │   ├── RemoteTree.cs       # 远端目录递归列举（跳过 _trash / _syncagent）
+│   │   ├── RemoteTree.cs       # 远端目录递归列举（跳过 _trash / _foldersyncer）
 │   │   ├── TaskInstaller.cs    # 计划任务注册（schtasks + XML）
 │   │   ├── Config.cs           # INI 解析
 │   │   ├── Logger.cs           # 日志与报告
@@ -88,7 +88,7 @@ dir-sync-agent/
 
 ### 上传端（目标 PC）
 
-1. 把 `release\upload\` 整个目录拷到目标机（建议放 D 盘，C 盘重置也不影响）。exe 已随仓库提供，也可以从 [Releases](https://github.com/Bright9025/dir-sync-agent/releases) 下载打好的 zip。
+1. 把 `release\upload\` 整个目录拷到目标机（建议放 D 盘，C 盘重置也不影响）。exe 已随仓库提供，也可以从 [Releases](https://github.com/Bright9025/folder-syncer/releases) 下载打好的 zip。
 2. 打开 `config.ini`，填写服务器地址、账号密码和要同步的目录：
 
 ```ini
@@ -139,7 +139,7 @@ remote = /你的目录
 | `tls_fingerprint` | 证书 SHA256 指纹（64 位十六进制，不带冒号），填了就按指纹锁定 |
 | `remote_root` | FTP 账号根目录，一般 `/` |
 | `allow_plaintext` | 默认 `false`：服务器没加密时只写日志、不登录、不同步 |
-| `manifest_dir` | 清单目录，默认 `/_syncagent`，两端保持一致 |
+| `manifest_dir` | 清单目录，默认 `/_foldersyncer`，两端保持一致 |
 | `timeout_sec` | 网络超时 |
 
 ### `[schedule]`
@@ -167,10 +167,10 @@ remote = /你的目录
 
 ## 📜 已归档清单
 
-保存端在服务器上维护 `_syncagent\<远端目录名>.tsv`：
+保存端在服务器上维护 `_foldersyncer\<远端目录名>.tsv`：
 
 ```text
-# SyncAgent manifest v1
+# FolderSyncer manifest v1
 a.txt	14	639312164783098361
 子目录/b.txt	6	639312164783098361
 ```

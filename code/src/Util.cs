@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal static class Util
     {

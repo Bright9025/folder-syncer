@@ -21,8 +21,8 @@ _probe/
 
 # ---- 计划任务临时文件 ----
 task.xml
-syncagent-task-*.xml
-syncagent-schtasks-*.txt
+foldersyncer-task-*.xml
+foldersyncer-schtasks-*.txt
 
 # ---- 系统与编辑器 ----
 Thumbs.db

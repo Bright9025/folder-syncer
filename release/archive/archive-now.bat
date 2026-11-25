@@ -6,7 +6,7 @@ rem  Extra arguments are passed through, e.g.:
 rem     archive-now.bat --dry-run
 rem ============================================================
 chcp 65001 >nul
-start "" /wait "%~dp0SyncAgent.exe" --config "%~dp0archive.ini" --archive %*
+start "" /wait "%~dp0FolderSyncer.exe" --config "%~dp0archive.ini" --archive %*
 if exist "%~dp0logs\archive-report.txt" type "%~dp0logs\archive-report.txt"
 echo.
 pause

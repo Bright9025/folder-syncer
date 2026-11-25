@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal static class RemoteTree
     {

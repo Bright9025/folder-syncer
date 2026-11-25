@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent (Split-Path -Parent $here)
-$exe = Join-Path $root 'release\upload\SyncAgent.exe'
+$exe = Join-Path $root 'release\upload\FolderSyncer.exe'
 $dev = $here
 $mockExe = "$dev\MockFtpServer.exe"
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:anycpu /codepage:65001 /out:"$mockExe" /r:System.dll /r:System.Core.dll "$dev\MockFtpServer.cs" | Out-Null
@@ -28,7 +28,7 @@ user = u
 password = p
 tls = off
 allow_plaintext = true
-manifest_dir = /_syncagent
+manifest_dir = /_foldersyncer
 
 [job:site]
 enabled = true
@@ -51,7 +51,7 @@ user = u
 password = p
 tls = off
 allow_plaintext = true
-manifest_dir = /_syncagent
+manifest_dir = /_foldersyncer
 
 [job:site]
 enabled = true
@@ -76,8 +76,8 @@ A ($p2.ExitCode -eq 0) "archive exit 0"
 A (Test-Path "$t\archive\a.txt") "a.txt archived locally"
 A (Test-Path "$t\archive\子目录\b.txt") "b.txt archived locally (chinese dir)"
 A (-not (Test-Path "$t\remote\site\a.txt")) "a.txt removed from server"
-A (Test-Path "$t\remote\_syncagent\site.tsv") "manifest written on server"
-$manifest = Get-Content "$t\remote\_syncagent\site.tsv" -Encoding UTF8 -Raw
+A (Test-Path "$t\remote\_foldersyncer\site.tsv") "manifest written on server"
+$manifest = Get-Content "$t\remote\_foldersyncer\site.tsv" -Encoding UTF8 -Raw
 A ($manifest -match 'a\.txt') "manifest lists a.txt"
 A ($manifest -match '子目录/b\.txt') "manifest lists chinese path"
 

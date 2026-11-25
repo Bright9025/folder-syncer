@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal sealed class GeneralConfig
     {
@@ -34,7 +34,7 @@ namespace SyncAgent
         public int TimeoutSec = 30;
         public string RemoteRoot = "/";
         /// <summary>服务器上存放「已归档清单」的目录（相对 remote_root）</summary>
-        public string ManifestDir = "/_syncagent";
+        public string ManifestDir = "/_foldersyncer";
         public bool AllowPlaintext = false;
 
         public bool TlsWanted { get { return !"off".Equals(Tls, StringComparison.OrdinalIgnoreCase); } }
@@ -46,7 +46,7 @@ namespace SyncAgent
         public bool OnLogon = true;
         public List<string> DailyTimes = new List<string>();
         public int RepeatMinutes = 0;
-        public string TaskName = "DSH-SyncAgent";
+        public string TaskName = "FolderSyncer";
         /// <summary>计划任务跑哪种模式：sync = 上传端；archive = 保存端</summary>
         public string Mode = "sync";
     }

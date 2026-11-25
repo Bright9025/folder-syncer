@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal sealed class ArchiveResult
     {

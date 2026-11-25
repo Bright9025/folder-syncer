@@ -12,7 +12,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal class FtpException : Exception
     {

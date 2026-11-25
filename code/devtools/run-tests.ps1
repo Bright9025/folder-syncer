@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent (Split-Path -Parent $here)
-$exe = Join-Path $root 'release\upload\SyncAgent.exe'
+$exe = Join-Path $root 'release\upload\FolderSyncer.exe'
 $dev = $here
 $mockExe = "$dev\MockFtpServer.exe"
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:anycpu /codepage:65001 /out:"$mockExe" /r:System.dll /r:System.Core.dll "$dev\MockFtpServer.cs" | Out-Null

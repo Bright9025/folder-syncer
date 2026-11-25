@@ -5,11 +5,11 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal static class Program
     {
-        private const string AppName = "DSH-SyncAgent";
+        private const string AppName = "FolderSyncer";
 
         [STAThread]
         private static int Main(string[] args)
@@ -131,7 +131,7 @@ namespace SyncAgent
         {
             DateTime started = DateTime.Now;
             StringBuilder report = new StringBuilder();
-            report.AppendLine("DSH-SyncAgent 同步结果");
+            report.AppendLine("FolderSyncer 同步结果");
             report.AppendLine("时间：" + started.ToString("yyyy-MM-dd HH:mm:ss"));
             report.AppendLine("配置：" + cfg.ConfigPath);
             report.AppendLine();
@@ -204,7 +204,7 @@ namespace SyncAgent
         {
             DateTime started = DateTime.Now;
             StringBuilder report = new StringBuilder();
-            report.AppendLine("DSH-SyncAgent 归档结果（保存端）");
+            report.AppendLine("FolderSyncer 归档结果（保存端）");
             report.AppendLine("时间：" + started.ToString("yyyy-MM-dd HH:mm:ss"));
             report.AppendLine("配置：" + cfg.ConfigPath);
             report.AppendLine();
@@ -276,16 +276,16 @@ namespace SyncAgent
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(AppName + " 用法（所有结果都写到日志文件，程序不会弹任何窗口）");
             sb.AppendLine();
-            sb.AppendLine("  SyncAgent.exe                     静默执行一次同步");
-            sb.AppendLine("  SyncAgent.exe --sync              同上（计划任务用）");
-            sb.AppendLine("  SyncAgent.exe --test              连接测试 -> logs\\test-report.txt");
-            sb.AppendLine("  SyncAgent.exe --archive           保存端：把服务器文件拉回本地归档并更新清单");
-            sb.AppendLine("  SyncAgent.exe --install-task      注册计划任务 -> logs\\install-report.txt");
-            sb.AppendLine("  SyncAgent.exe --uninstall-task    删除计划任务 -> logs\\install-report.txt");
-            sb.AppendLine("  SyncAgent.exe --dry-run           演练，不上传不删除");
-            sb.AppendLine("  SyncAgent.exe --verbose           日志里记录每一条 FTP 命令");
-            sb.AppendLine("  SyncAgent.exe --config <路径>     指定配置文件");
-            sb.AppendLine("  SyncAgent.exe --help              把本说明写到 logs\\help.txt");
+            sb.AppendLine("  FolderSyncer.exe                     静默执行一次同步");
+            sb.AppendLine("  FolderSyncer.exe --sync              同上（计划任务用）");
+            sb.AppendLine("  FolderSyncer.exe --test              连接测试 -> logs\\test-report.txt");
+            sb.AppendLine("  FolderSyncer.exe --archive           保存端：把服务器文件拉回本地归档并更新清单");
+            sb.AppendLine("  FolderSyncer.exe --install-task      注册计划任务 -> logs\\install-report.txt");
+            sb.AppendLine("  FolderSyncer.exe --uninstall-task    删除计划任务 -> logs\\install-report.txt");
+            sb.AppendLine("  FolderSyncer.exe --dry-run           演练，不上传不删除");
+            sb.AppendLine("  FolderSyncer.exe --verbose           日志里记录每一条 FTP 命令");
+            sb.AppendLine("  FolderSyncer.exe --config <路径>     指定配置文件");
+            sb.AppendLine("  FolderSyncer.exe --help              把本说明写到 logs\\help.txt");
             sb.AppendLine();
             sb.AppendLine("常用文件：logs\\last-run.txt（最近一次同步的摘要）、logs\\sync-年月日.log（详细日志）");
             return sb.ToString();

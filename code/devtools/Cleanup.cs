@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using SyncAgent;
+using FolderSyncer;
 
 // 开发用：按 FTP 绝对路径递归删除服务器上的目录/文件（复用主程序的 FTP 客户端，UTF-8 安全）
 // 用法：Cleanup.exe <config.ini> <远程路径1> [远程路径2] ...

@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace SyncAgent
+namespace FolderSyncer
 {
     internal sealed class ManifestEntry
     {
@@ -111,7 +111,7 @@ namespace SyncAgent
             try
             {
                 StringBuilder sb = new StringBuilder();
-                sb.Append("# SyncAgent manifest v1\r\n");
+                sb.Append("# FolderSyncer manifest v1\r\n");
                 List<ManifestEntry> list = new List<ManifestEntry>(_map.Values);
                 list.Sort(delegate(ManifestEntry a, ManifestEntry b)
                 {

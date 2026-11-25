@@ -1,13 +1,13 @@
-# 贡献指南 / Contributing to Dir Sync Agent
+# 贡献指南 / Contributing to Folder Syncer
 
-感谢你愿意改进 Dir Sync Agent。无论是 Bug 报告、文档修订还是代码提交，都欢迎。
+感谢你愿意改进 Folder Syncer。无论是 Bug 报告、文档修订还是代码提交，都欢迎。
 
 > English speakers: the commands and PR checklist below apply to everyone. Feel free to open an issue in English.
 
 ## 开始之前
 
 1. 先阅读 [README.md](./README.md) 和 [English README](./README.en.md)，确认当前功能与已知边界。
-2. 搜索现有 [Issues](https://github.com/Bright9025/dir-sync-agent/issues)，避免重复报告。
+2. 搜索现有 [Issues](https://github.com/Bright9025/folder-syncer/issues)，避免重复报告。
 3. 较大的功能改动请先开 Issue 讨论方向，不要直接提交一个难以评审的大 PR。
 4. **不要提交任何真实配置、账号或数据**：`release/**/config.ini`、`release/**/archive.ini` 是随程序提供的空模板，只能保留占位符；真实的服务器地址、账号、密码、证书指纹请放在仓库外。`logs/`、`state/`、`dist/` 已在 `.gitignore` 中排除。
 
@@ -18,12 +18,12 @@
 - 不需要 Visual Studio、MSBuild、Node 或任何第三方库
 
 ```bat
-git clone https://github.com/Bright9025/dir-sync-agent.git
-cd dir-sync-agent
+git clone https://github.com/Bright9025/folder-syncer.git
+cd folder-syncer
 code\build.bat
 ```
 
-编译产物会同时写入 `release\upload\SyncAgent.exe` 和 `release\archive\SyncAgent.exe`。
+编译产物会同时写入 `release\upload\FolderSyncer.exe` 和 `release\archive\FolderSyncer.exe`。
 
 ## 修改后如何验证
 
@@ -51,7 +51,7 @@ powershell -ExecutionPolicy Bypass -File code\devtools\run-tests-3tier.ps1
 - **不静默发密码**：服务器未启用 TLS 且 `allow_plaintext=false` 时，必须只写日志、不登录、不同步。
 - **路径统一走 `Util`**：远端路径用 `Util.CombineRemote` / `Util.NormalizeRemote`，本地路径用 `Path.Combine`；不要手拼 `/` 或 `\`。
 - **异常要落到日志**：作业级异常不能吞掉，至少 `Log.Error` 一条并计入 `Errors`。
-- **列表与元数据**：优先 `MLSD`，失败再退回 `LIST`；不要把 `_trash` / `_syncagent` 当成用户目录递归。
+- **列表与元数据**：优先 `MLSD`，失败再退回 `LIST`；不要把 `_trash` / `_foldersyncer` 当成用户目录递归。
 - **文件写入**：上传先写 `.synctmp` 再改名；清单等临时文件放 `state\` 或程序目录，不要用 `%TEMP%`（有些环境不可写）。
 - 文案用中文；日志格式保持 `[job:名字] 动作 内容` 的风格，便于用户贴日志排错。
 
