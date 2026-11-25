@@ -13,6 +13,8 @@
 
 > 无安装 · 无第三方依赖 · 无窗口 · 无托盘 · 无弹窗
 
+> 当前版本：**v1.0.0** · [GitHub Releases](https://github.com/Bright9025/dir-sync-agent/releases)
+
 </div>
 
 ## ✨ 功能特点
@@ -61,7 +63,8 @@ dir-sync-agent/
 │   │   ├── Logger.cs           # 日志与报告
 │   │   └── Util.cs             # 路径、glob、编码等工具
 │   ├── devtools/               # 开发自测：模拟 FTP 服务器、清理工具、测试脚本
-│   └── build.bat               # 一键编译到 release\upload 和 release\archive
+│   ├── build.bat               # 一键编译到 release\upload 和 release\archive
+│   └── pack-release.ps1        # 打包 GitHub Releases 用的 zip
 ├── release/
 │   ├── upload/                 # 上传端（目标 PC）：exe + config.ini + bat
 │   └── archive/                # 保存端（常开机）：exe + archive.ini + bat
@@ -85,7 +88,7 @@ dir-sync-agent/
 
 ### 上传端（目标 PC）
 
-1. 把 `release\upload\` 整个目录拷到目标机（建议放 D 盘，C 盘重置也不影响）。
+1. 把 `release\upload\` 整个目录拷到目标机（建议放 D 盘，C 盘重置也不影响）。exe 已随仓库提供，也可以从 [Releases](https://github.com/Bright9025/dir-sync-agent/releases) 下载打好的 zip。
 2. 复制 `config.example.ini` 为 `config.ini`，填写服务器地址、账号密码和要同步的目录：
 
 ```ini
@@ -192,9 +195,10 @@ a.txt	14	639312164783098361
 ## 🧪 开发与自测
 
 ```bat
-code\build.bat                 :: 编译到 release\upload 和 release\archive
+code\build.bat                     :: 编译到 release\upload 和 release\archive
 code\devtools\run-tests.ps1        :: 上传端自测（MLSD/MFMT/回退/未加密跳过）
 code\devtools\run-tests-3tier.ps1  :: 三端自测（上传 -> 归档 -> 不重传）
+powershell -File code\pack-release.ps1 -Version 1.0.0   :: 打 Releases 用的 zip -> dist\
 ```
 
 `code\devtools\MockFtpServer.cs` 是一个最小 FTP 服务器（支持 MLSD/MFMT/可选 TLS），测试脚本会自动编译并启动它，全部在本机完成，不会碰真实服务器。

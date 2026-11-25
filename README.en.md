@@ -13,6 +13,8 @@ A silent, popup-free Windows directory sync tool: push folders to your own serve
 
 > No installer · No third-party dependencies · No windows · No tray icon · No dialogs
 
+> Current version: **v1.0.0** · [GitHub Releases](https://github.com/Bright9025/dir-sync-agent/releases)
+
 </div>
 
 ## ✨ Features
@@ -61,7 +63,8 @@ dir-sync-agent/
 │   │   ├── Logger.cs           # Logs and reports
 │   │   └── Util.cs             # Paths, globs, encodings
 │   ├── devtools/               # Self-test: mock FTP server, cleanup tool, test scripts
-│   └── build.bat               # One-click build into release\upload and release\archive
+│   ├── build.bat               # One-click build into release\upload and release\archive
+│   └── pack-release.ps1        # Zip for GitHub Releases
 ├── release/
 │   ├── upload/                 # Uploader package: exe + config.ini + .bat files
 │   └── archive/                # Archiver package: exe + archive.ini + .bat files
@@ -85,7 +88,7 @@ dir-sync-agent/
 
 ### Uploader (target PC)
 
-1. Copy `release\upload\` to the target machine (put it on drive D if the system drive gets wiped).
+1. Copy `release\upload\` to the target machine (put it on drive D if the system drive gets wiped). The exe ships with the repo; a ready-made zip is also attached to [Releases](https://github.com/Bright9025/dir-sync-agent/releases).
 2. Copy `config.example.ini` to `config.ini` and fill in server, credentials and folders:
 
 ```ini
@@ -195,6 +198,7 @@ sub/b.txt	6	639312164783098361
 code\build.bat                     :: build into release\upload and release\archive
 code\devtools\run-tests.ps1        :: uploader tests (MLSD/MFMT/fallback/unencrypted skip)
 code\devtools\run-tests-3tier.ps1  :: three-tier tests (upload -> archive -> no re-upload)
+powershell -File code\pack-release.ps1 -Version 1.0.0   :: zip for Releases -> dist\
 ```
 
 `code\devtools\MockFtpServer.cs` is a minimal FTP server (MLSD, MFMT, optional TLS). The test scripts build and launch it locally, so nothing touches a real server.

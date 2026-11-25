@@ -7,8 +7,7 @@ state/
 release/**/config.ini
 release/**/archive.ini
 
-# ---- 编译产物（用 code/build.bat 生成，或从 GitHub Releases 下载）----
-release/**/*.exe
+# ---- 编译产物：release 里的 exe 会一起提交，方便直接从仓库取用；自测用临时 exe 不提交 ----
 code/devtools/*.exe
 *.pdb
 *.obj
@@ -32,3 +31,6 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# ---- 打包产物 ----
+dist/
