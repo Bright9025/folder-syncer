@@ -92,7 +92,7 @@ folder-syncer/
 ### 上传端（目标 PC）
 
 1. 把 `release\upload\` 整个目录拷到目标机（建议放 D 盘，C 盘重置也不影响）。exe 已随仓库提供，也可以从 [Releases](https://github.com/Bright9025/folder-syncer/releases) 下载打好的 zip。
-2. 打开 `config.ini`，填写服务器地址、账号密码和要同步的目录：
+2. 打开 `config.ini`，填写服务器地址、账号密码和要同步的目录（想要英文注释版就用 `config.en.ini`，**记得先把文件名改成 `config.ini`，把 `.en` 去掉**）：
 
 ```ini
 [server]
@@ -113,7 +113,7 @@ mode = upload
 ### 保存端（常开机）
 
 1. 把 `release\archive\` 拷到那台常开的电脑。
-2. 打开 `archive.ini`，`[server]` 与上传端保持一致，改好存档目录：
+2. 打开 `archive.ini`，`[server]` 与上传端保持一致，改好存档目录（英文注释版是 `archive.en.ini`，同样**先把文件名改成 `archive.ini`**）：
 
 ```ini
 [schedule]

@@ -92,7 +92,7 @@ folder-syncer/
 ### Uploader (target PC)
 
 1. Copy `release\upload\` to the target machine (put it on drive D if the system drive gets wiped). The exe ships with the repo; a ready-made zip is also attached to [Releases](https://github.com/Bright9025/folder-syncer/releases).
-2. Open `config.ini` and fill in server, credentials and folders:
+2. Open `config.ini` and fill in server, credentials and folders (English comments live in `config.en.ini` — **rename it to `config.ini` first, dropping the `.en`**):
 
 ```ini
 [server]
@@ -113,7 +113,7 @@ mode = upload
 ### Archiver (always-on PC)
 
 1. Copy `release\archive\` to the always-on machine.
-2. Open `archive.ini`, keep `[server]` identical to the uploader and set the archive folder:
+2. Open `archive.ini`, keep `[server]` identical to the uploader and set the archive folder (the English version is `archive.en.ini` — **rename it to `archive.ini` first**):
 
 ```ini
 [schedule]
