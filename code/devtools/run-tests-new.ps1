@@ -105,6 +105,22 @@ A ($p3.ExitCode -ne 0) "archive reports error on hash mismatch (exit $($p3.ExitC
 A (Test-Path "$t\remote\site\a.txt") "server file kept when hash mismatches"
 $arcLog = Get-Content "$t\logs-arc\sync-$(Get-Date -Format yyyyMMdd).log" -Encoding UTF8 -Raw
 A ($arcLog -match '哈希不符') "log explains hash mismatch"
+A ($arcLog -match '重新下载一次') "downloaded a second time before giving up"
+A (Test-Path "$t\remote\_foldersyncer\redo-site.tsv") "redo marker written on server"
+
+"== 3b) 上传端看到重传标记后强制重传 =="
+$p3b = Start-Process -FilePath $exe -ArgumentList @('--config', "$t\up.ini", '--sync') -Wait -PassThru -WindowStyle Hidden
+A ($p3b.ExitCode -eq 0) "sync exit 0"
+$upLog = Get-Content "$t\logs-up\sync-$(Get-Date -Format yyyyMMdd).log" -Encoding UTF8 -Raw
+A ($upLog -match '已按保存端要求重传并清除标记') "uploader re-sent the file on request"
+A (-not (Test-Path "$t\remote\_foldersyncer\redo-site.tsv")) "redo marker cleared after re-upload"
+$sumUp = Get-Content "$t\logs-up\last-run.txt" -Encoding UTF8 -Raw
+A ($sumUp -match '重传 1 个') "summary reports the re-upload"
+
+"== 3c) 重传后归档成功 =="
+$p3c = Start-Process -FilePath $exe -ArgumentList @('--config', "$t\arc.ini", '--archive') -Wait -PassThru -WindowStyle Hidden
+A ($p3c.ExitCode -eq 0) "archive exit 0 after re-upload"
+A (-not (Test-Path "$t\remote\site\a.txt")) "file archived after re-upload"
 
 "== 4) 单文件大小上限 =="
 Stop-Process -Id $mock.Id -Force -ErrorAction SilentlyContinue

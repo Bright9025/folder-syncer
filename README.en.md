@@ -239,7 +239,10 @@ After each successful upload the uploader computes the file SHA256 (while stream
 `_foldersyncer\hash-<folder>.tsv` on the server. The archiver hashes what it downloads and compares:
 
 - match → delete the server copy, record it in the manifest, drop it from the hash journal
-- mismatch → **keep the server file**, count an error, log both hashes
+- mismatch → **download it once more**
+  - second attempt matches → archive normally
+  - still mismatched → **keep the server file**, count an error and mark the file as "needs re-upload" on the server; the uploader re-sends it on its next run and the archiver clears the mark once it archives successfully
+  - three failures in a row for the same file → stop auto-retrying and log a clear error, so a persistently flaky link does not cause endless churn
 
 Hashes are also cached in `state\` keyed by size + modification time, so unchanged files are never re-hashed.
 The first run after enabling `verify_hash` reads every file once.

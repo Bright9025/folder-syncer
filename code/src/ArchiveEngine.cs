@@ -68,8 +68,12 @@ namespace FolderSyncer
                 ftp.Login();
                 Manifest manifest = Manifest.Load(ftp, manifestPath, _cfg.StateDirAbs);
                 HashJournal journal = new HashJournal();
+                RedoList redo = new RedoList();
                 if (job.VerifyHash)
+                {
                     journal = HashJournal.Load(ftp, HashJournal.PathFor(_cfg, remoteRoot), _cfg.StateDirAbs);
+                    redo = RedoList.Load(ftp, RedoList.PathFor(_cfg, remoteRoot), _cfg.StateDirAbs);
+                }
 
                 Dictionary<string, RemoteEntry> remote = RemoteTree.Walk(ftp, remoteRoot, SkipMetaDirs(job));
                 List<string> rels = new List<string>();
@@ -111,17 +115,36 @@ namespace FolderSyncer
                     string part = target + ".part";
                     try
                     {
-                        string gotHash;
-                        long n = ftp.DownloadFile(absRemote, part, null, out gotHash);
-                        if (e.Size >= 0 && n != e.Size)
-                            throw new IOException("下载大小不符：期望 " + e.Size + "，实际 " + n);
+                        long n;
+                        string gotHash = DownloadVerified(ftp, absRemote, part, e.Size, out n);
 
                         long expectSize;
                         string expectHash;
-                        if (job.VerifyHash && journal.TryGet(rel, out expectSize, out expectHash) && expectHash.Length > 0)
+                        if (job.VerifyHash && journal.TryGet(rel, out expectSize, out expectHash) && expectHash.Length > 0 &&
+                            !string.Equals(gotHash, expectHash, StringComparison.OrdinalIgnoreCase))
                         {
+                            Log.Warn("[archive:" + job.Name + "] 哈希不符，重新下载一次：" + rel);
+                            try { if (File.Exists(part)) File.Delete(part); } catch { }
+                            gotHash = DownloadVerified(ftp, absRemote, part, e.Size, out n);
+
                             if (!string.Equals(gotHash, expectHash, StringComparison.OrdinalIgnoreCase))
-                                throw new IOException("哈希不符：上传端 " + expectHash + "，下载后 " + gotHash + "，保留服务器文件");
+                            {
+                                int attempts = redo.Attempts(rel) + 1;
+                                if (attempts >= 3)
+                                {
+                                    redo.Remove(rel);
+                                    Log.Error("[archive:" + job.Name + "] " + rel + " 连续 " + attempts +
+                                              " 次校验失败，停止自动重传，请检查网络或是否有程序在改动文件；服务器文件保留");
+                                }
+                                else
+                                {
+                                    redo.Set(rel, expectHash, attempts);
+                                    Log.Warn("[archive:" + job.Name + "] " + rel + " 重下后哈希仍不符（第 " + attempts +
+                                             " 次），已标记为需要重传，上传端下次会重传；服务器文件保留");
+                                }
+                                throw new IOException("哈希不符（重试一次仍不符）：上传端 " + expectHash + "，下载后 " + gotHash);
+                            }
+                            Log.Info("[archive:" + job.Name + "] 重新下载后哈希一致：" + rel);
                         }
 
                         bool duplicated = false;
@@ -150,7 +173,11 @@ namespace FolderSyncer
                         res.Bytes += n;
                         if (duplicated) res.Duplicate++;
                         manifest.Add(rel, n, DateTime.UtcNow);
-                        if (job.VerifyHash) journal.Remove(rel);
+                        if (job.VerifyHash)
+                        {
+                            journal.Remove(rel);
+                            redo.Remove(rel);
+                        }
                         Log.Info("[archive:" + job.Name + "] 归档 " + rel + "（" + Util.FormatBytes(n) + "）" +
                                  (duplicated ? "，本地已有相同内容" : ""));
                     }
@@ -165,6 +192,7 @@ namespace FolderSyncer
 
                 if (!dryRun) manifest.Save(ftp, _cfg.StateDirAbs);
                 if (!dryRun && job.VerifyHash && journal.Changed) journal.Save(ftp, _cfg.StateDirAbs);
+                if (!dryRun && job.VerifyHash && redo.Changed) redo.Save(ftp, _cfg.StateDirAbs);
             }
             catch (FtpNoEncryptionException ex)
             {
@@ -187,6 +215,15 @@ namespace FolderSyncer
             res.Elapsed = DateTime.Now - started;
             Log.Info("[archive:" + job.Name + "] 结束：" + res.Summary());
             return res;
+        }
+
+        private static string DownloadVerified(FtpClient ftp, string absRemote, string part, long expectSize, out long got)
+        {
+            string hash;
+            got = ftp.DownloadFile(absRemote, part, null, out hash);
+            if (expectSize >= 0 && got != expectSize)
+                throw new IOException("下载大小不符：期望 " + expectSize + "，实际 " + got);
+            return hash;
         }
 
         private static long TotalSize(Dictionary<string, RemoteEntry> map, List<string> rels)

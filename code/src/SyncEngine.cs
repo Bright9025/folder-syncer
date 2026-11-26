@@ -23,6 +23,7 @@ namespace FolderSyncer
         public int Trashed;
         public int Archived;
         public int SkippedBig;
+        public int Reuploaded;
         public int Deleted;
         public int Errors;
         public int Dirs;
@@ -37,7 +38,7 @@ namespace FolderSyncer
         public string Summary()
         {
             string s = string.Format(CultureInfo.InvariantCulture,
-                "上传 {0} 个 / {1}，跳过 {2}（其中已归档 {8}），回收 {3}，删除 {4}，新建目录 {5}，错误 {6}，耗时 {7}" + (SkippedBig > 0 ? "，超限跳过 " + SkippedBig + " 个" : ""),
+                "上传 {0} 个 / {1}，跳过 {2}（其中已归档 {8}），回收 {3}，删除 {4}，新建目录 {5}，错误 {6}，耗时 {7}" + (SkippedBig > 0 ? "，超限跳过 " + SkippedBig + " 个" : "") + (Reuploaded > 0 ? "，重传 " + Reuploaded + " 个" : ""),
                 Uploaded, Util.FormatBytes(Bytes), Skipped, Trashed, Deleted, Dirs, Errors, Util.FormatSpan(Elapsed), Archived);
             if (Message.Length > 0) s += "（" + Message + "）";
             return s;
@@ -221,10 +222,12 @@ namespace FolderSyncer
 
                 // 上传端写在服务器上的哈希清单（保存端用来验证下载内容）
                 HashJournal journal = new HashJournal();
+                RedoList redo = new RedoList();
                 if (job.VerifyHash)
                 {
                     string hashPath = HashJournal.PathFor(_cfg, remoteRoot);
                     journal = HashJournal.Load(ftp, hashPath, _cfg.StateDirAbs);
+                    redo = RedoList.Load(ftp, RedoList.PathFor(_cfg, remoteRoot), _cfg.StateDirAbs);
                 }
 
                 Dictionary<string, RemoteEntry> remote = RemoteTree.Walk(ftp, remoteRoot, SkipMetaDirs(job));
@@ -260,15 +263,16 @@ namespace FolderSyncer
                     bool known = state.TryGet(rel, out stSize, out stTicks, out stHash);
                     bool unchangedLocal = known && stSize == it.Size && stTicks == it.Ticks;
                     bool remoteOk = re != null && remoteSize == it.Size;
+                    bool mustRedo = job.VerifyHash && redo.Contains(rel);
 
-                    if (unchangedLocal && remoteOk)
+                    if (!mustRedo && unchangedLocal && remoteOk)
                     {
                         res.Skipped++;
                         continue;
                     }
 
                     // 服务器上已经没有这个文件，但保存端已经把它拉回本地归档过了 -> 不用重传
-                    if (unchangedLocal && re == null && manifest.Contains(rel))
+                    if (!mustRedo && unchangedLocal && re == null && manifest.Contains(rel))
                     {
                         res.Skipped++;
                         res.Archived++;
@@ -303,6 +307,12 @@ namespace FolderSyncer
                             state.Set(rel, it.Size, it.Ticks, hash);
                             if (job.VerifyHash) journal.Set(rel, it.Size, hash);
                         }
+                        if (mustRedo)
+                        {
+                            redo.Remove(rel);
+                            res.Reuploaded++;
+                            Log.Info("[job:" + job.Name + "] 已按保存端要求重传并清除标记：" + rel);
+                        }
                         res.Uploaded++;
                         res.Bytes += it.Size;
                         Log.Info("[job:" + job.Name + "] 上传 " + rel + "（" + Util.FormatBytes(it.Size) + "）");
@@ -317,6 +327,8 @@ namespace FolderSyncer
                 List<string> gone = new List<string>();
                 foreach (string rel in state.Keys)
                     if (!localFiles.ContainsKey(rel)) gone.Add(rel);
+                if (job.VerifyHash)
+                    foreach (string rel in gone) redo.Remove(rel);
 
                 if (!job.IsMirror)
                 {
@@ -376,6 +388,7 @@ namespace FolderSyncer
 
                 if (!dryRun) state.Save();
                 if (!dryRun && job.VerifyHash && journal.Changed) journal.Save(ftp, _cfg.StateDirAbs);
+                if (!dryRun && job.VerifyHash && redo.Changed) redo.Save(ftp, _cfg.StateDirAbs);
                 res.Message = firstRun ? "首次运行：只上传不删除，已建立基线" : "";
             }
             catch (FtpNoEncryptionException ex)
