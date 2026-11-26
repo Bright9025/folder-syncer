@@ -51,6 +51,17 @@ namespace FolderSyncer
         public string Mode = "sync";
     }
 
+    internal sealed class UpdateConfig
+    {
+        /// <summary>是否自动从 GitHub Releases 检查并更新</summary>
+        public bool Enabled = true;
+        public string Repo = "Bright9025/folder-syncer";
+        /// <summary>两次检查之间至少间隔多少小时</summary>
+        public int CheckHours = 24;
+        /// <summary>取哪个发布包：auto（按当前角色）/ upload / archive</summary>
+        public string Asset = "auto";
+    }
+
     internal sealed class JobConfig
     {
         public string Name = "";
@@ -68,6 +79,10 @@ namespace FolderSyncer
         public List<string> Excludes = new List<string>();
         public List<string> Includes = new List<string>();
         public bool FollowLinks = false;
+        /// <summary>单文件大小上限（MB），0 = 不限制；超过的文件自动跳过</summary>
+        public int MaxFileMb = 0;
+        /// <summary>是否做内容哈希校验（上传端记哈希、保存端下载后比对）</summary>
+        public bool VerifyHash = true;
 
         public bool IsMirror { get { return "mirror".Equals(Mode, StringComparison.OrdinalIgnoreCase); } }
     }
@@ -79,6 +94,7 @@ namespace FolderSyncer
         public GeneralConfig General = new GeneralConfig();
         public ServerConfig Server = new ServerConfig();
         public ScheduleConfig Schedule = new ScheduleConfig();
+        public UpdateConfig Update = new UpdateConfig();
         public List<JobConfig> Jobs = new List<JobConfig>();
         public List<string> Warnings = new List<string>();
         public List<string> Errors = new List<string>();
@@ -217,6 +233,17 @@ namespace FolderSyncer
                         default: cfg.Warnings.Add("第 " + lineNo + " 行：[server] 未知键 " + key); break;
                     }
                     break;
+                case "update":
+                    switch (key)
+                    {
+                        case "enabled": cfg.Update.Enabled = ParseBool(val, true); break;
+                        case "auto_update": cfg.Update.Enabled = ParseBool(val, true); break;
+                        case "repo": cfg.Update.Repo = val.Trim(); break;
+                        case "check_hours": cfg.Update.CheckHours = ParseInt(val, 24); break;
+                        case "asset": cfg.Update.Asset = val.ToLowerInvariant(); break;
+                        default: cfg.Warnings.Add("第 " + lineNo + " 行：[update] 未知键 " + key); break;
+                    }
+                    break;
                 case "schedule":
                     switch (key)
                     {
@@ -251,6 +278,8 @@ namespace FolderSyncer
                 case "exclude": job.Excludes.AddRange(Util.SplitList(val)); break;
                 case "include": job.Includes.AddRange(Util.SplitList(val)); break;
                 case "follow_links": job.FollowLinks = ParseBool(val, false); break;
+                case "max_file_mb": job.MaxFileMb = ParseInt(val, 0); break;
+                case "verify_hash": job.VerifyHash = ParseBool(val, true); break;
                 default: break;
             }
         }
@@ -263,6 +292,9 @@ namespace FolderSyncer
             if (General.LogKeepDays <= 0) General.LogKeepDays = 30;
             if (General.MaxRetries < 0) General.MaxRetries = 0;
             if (Schedule.Mode != "archive") Schedule.Mode = "sync";
+            if (Update.CheckHours < 1) Update.CheckHours = 24;
+            if (Update.Asset != "upload" && Update.Asset != "archive") Update.Asset = "auto";
+            if (string.IsNullOrEmpty(Update.Repo)) Update.Repo = "Bright9025/folder-syncer";
             Server.RemoteRoot = Util.NormalizeRemote(Server.RemoteRoot);
             Server.ManifestDir = Util.NormalizeRemote(Server.ManifestDir);
 
@@ -273,6 +305,7 @@ namespace FolderSyncer
                 if (string.IsNullOrEmpty(j.RemoteDir)) j.RemoteDir = "/" + SafeName(j.Name);
                 j.RemoteDir = Util.NormalizeRemote(j.RemoteDir);
                 j.TrashDir = Util.NormalizeRemote(j.TrashDir);
+                if (j.MaxFileMb < 0) j.MaxFileMb = 0;
                 if (string.IsNullOrEmpty(j.Mode)) j.Mode = "mirror";
                 if (j.Mode != "mirror" && j.Mode != "upload")
                 {

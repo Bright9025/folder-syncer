@@ -793,50 +793,78 @@ namespace FolderSyncer
         /// <summary>下载文件到本地（覆盖），返回写入的字节数。</summary>
         public long DownloadFile(string remotePath, string localPath, Action<long, long> progress)
         {
+            string hash;
+            return DownloadFile(remotePath, localPath, progress, out hash);
+        }
+
+        /// <summary>下载文件到本地（覆盖），同时计算 SHA256，返回写入的字节数。</summary>
+        public long DownloadFile(string remotePath, string localPath, Action<long, long> progress, out string sha256Hex)
+        {
             long total = -1;
             try { total = Size(remotePath); } catch { }
             string dir = Path.GetDirectoryName(localPath);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             long done = 0;
-            using (Transfer t = BeginTransfer("RETR " + remotePath))
+            using (SHA256 sha = SHA256.Create())
             {
-                using (FileStream fs = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (Transfer t = BeginTransfer("RETR " + remotePath))
                 {
-                    byte[] buf = new byte[65536];
-                    int n;
-                    while ((n = t.Stream.Read(buf, 0, buf.Length)) > 0)
-                    {
-                        fs.Write(buf, 0, n);
-                        done += n;
-                        if (progress != null && total > 0) progress(done, total);
-                    }
-                }
-                EndTransfer(t);
-            }
-            return done;
-        }
-
-        public void UploadFile(string localPath, string remotePath, Action<long, long> progress)
-        {
-            string tmp = remotePath + ".synctmp";
-            long total = new FileInfo(localPath).Length;
-            try
-            {
-                using (Transfer t = BeginTransfer("STOR " + tmp))
-                {
-                    using (FileStream fs = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (FileStream fs = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
                         byte[] buf = new byte[65536];
-                        long done = 0;
                         int n;
-                        while ((n = fs.Read(buf, 0, buf.Length)) > 0)
+                        while ((n = t.Stream.Read(buf, 0, buf.Length)) > 0)
                         {
-                            t.Stream.Write(buf, 0, n);
+                            fs.Write(buf, 0, n);
+                            sha.TransformBlock(buf, 0, n, null, 0);
                             done += n;
                             if (progress != null && total > 0) progress(done, total);
                         }
                     }
                     EndTransfer(t);
+                }
+                sha.TransformFinalBlock(new byte[0], 0, 0);
+                sha256Hex = Util.Sha256Hex(sha.Hash);
+            }
+            return done;
+        }
+
+        /// <summary>上传文件：先写 .synctmp，再改名，避免中断时把服务器上的旧文件写坏。</summary>
+        public void UploadFile(string localPath, string remotePath, Action<long, long> progress)
+        {
+            string hash;
+            UploadFile(localPath, remotePath, progress, out hash);
+        }
+
+        /// <summary>上传文件，同时计算实际发送内容的 SHA256。</summary>
+        public void UploadFile(string localPath, string remotePath, Action<long, long> progress, out string sha256Hex)
+        {
+            string tmp = remotePath + ".synctmp";
+            long total = new FileInfo(localPath).Length;
+            string hash = "";
+            try
+            {
+                using (SHA256 sha = SHA256.Create())
+                {
+                    using (Transfer t = BeginTransfer("STOR " + tmp))
+                    {
+                        using (FileStream fs = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        {
+                            byte[] buf = new byte[65536];
+                            long done = 0;
+                            int n;
+                            while ((n = fs.Read(buf, 0, buf.Length)) > 0)
+                            {
+                                t.Stream.Write(buf, 0, n);
+                                sha.TransformBlock(buf, 0, n, null, 0);
+                                done += n;
+                                if (progress != null && total > 0) progress(done, total);
+                            }
+                        }
+                        EndTransfer(t);
+                    }
+                    sha.TransformFinalBlock(new byte[0], 0, 0);
+                    hash = Util.Sha256Hex(sha.Hash);
                 }
                 try
                 {
@@ -853,9 +881,11 @@ namespace FolderSyncer
                     TrySetMtime(remotePath, utc);
                 }
                 catch { }
+                sha256Hex = hash;
             }
             catch
             {
+                sha256Hex = "";
                 try { DeleteFile(tmp); } catch { }
                 throw;
             }

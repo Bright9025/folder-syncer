@@ -15,6 +15,7 @@ namespace FolderSyncer
         public int Deleted;
         public int Duplicate;   // 本地已有同样内容，没重复写
         public int Errors;
+        public int SkippedBig;
         public bool Aborted;
         public bool PolicySkipped;
         public TimeSpan Elapsed;
@@ -25,7 +26,7 @@ namespace FolderSyncer
         public string Summary()
         {
             string s = string.Format(CultureInfo.InvariantCulture,
-                "下载 {0} 个 / {1}（其中 {2} 个本地已有相同内容），删除服务器 {3} 个，错误 {4}，耗时 {5}",
+                "下载 {0} 个 / {1}（其中 {2} 个本地已有相同内容），删除服务器 {3} 个，错误 {4}，耗时 {5}" + (SkippedBig > 0 ? "，超限跳过 " + SkippedBig + " 个" : ""),
                 Downloaded, Util.FormatBytes(Bytes), Duplicate, Deleted, Errors, Util.FormatSpan(Elapsed));
             if (Message.Length > 0) s += "（" + Message + "）";
             return s;
@@ -66,6 +67,9 @@ namespace FolderSyncer
                 ftp.Connect();
                 ftp.Login();
                 Manifest manifest = Manifest.Load(ftp, manifestPath, _cfg.StateDirAbs);
+                HashJournal journal = new HashJournal();
+                if (job.VerifyHash)
+                    journal = HashJournal.Load(ftp, HashJournal.PathFor(_cfg, remoteRoot), _cfg.StateDirAbs);
 
                 Dictionary<string, RemoteEntry> remote = RemoteTree.Walk(ftp, remoteRoot, SkipMetaDirs(job));
                 List<string> rels = new List<string>();
@@ -97,12 +101,28 @@ namespace FolderSyncer
                         continue;
                     }
 
+                    if (job.MaxFileMb > 0 && e.Size > (long)job.MaxFileMb * 1024L * 1024L)
+                    {
+                        res.SkippedBig++;
+                        Log.Warn("[archive:" + job.Name + "] 跳过超限文件（保留在服务器上）：" + rel + "（" + Util.FormatBytes(e.Size) + "）");
+                        continue;
+                    }
+
                     string part = target + ".part";
                     try
                     {
-                        long n = ftp.DownloadFile(absRemote, part, null);
+                        string gotHash;
+                        long n = ftp.DownloadFile(absRemote, part, null, out gotHash);
                         if (e.Size >= 0 && n != e.Size)
                             throw new IOException("下载大小不符：期望 " + e.Size + "，实际 " + n);
+
+                        long expectSize;
+                        string expectHash;
+                        if (job.VerifyHash && journal.TryGet(rel, out expectSize, out expectHash) && expectHash.Length > 0)
+                        {
+                            if (!string.Equals(gotHash, expectHash, StringComparison.OrdinalIgnoreCase))
+                                throw new IOException("哈希不符：上传端 " + expectHash + "，下载后 " + gotHash + "，保留服务器文件");
+                        }
 
                         bool duplicated = false;
                         if (File.Exists(target) && SameContent(target, part))
@@ -130,6 +150,7 @@ namespace FolderSyncer
                         res.Bytes += n;
                         if (duplicated) res.Duplicate++;
                         manifest.Add(rel, n, DateTime.UtcNow);
+                        if (job.VerifyHash) journal.Remove(rel);
                         Log.Info("[archive:" + job.Name + "] 归档 " + rel + "（" + Util.FormatBytes(n) + "）" +
                                  (duplicated ? "，本地已有相同内容" : ""));
                     }
@@ -143,6 +164,7 @@ namespace FolderSyncer
                 }
 
                 if (!dryRun) manifest.Save(ftp, _cfg.StateDirAbs);
+                if (!dryRun && job.VerifyHash && journal.Changed) journal.Save(ftp, _cfg.StateDirAbs);
             }
             catch (FtpNoEncryptionException ex)
             {

@@ -17,7 +17,7 @@ if not exist "%OUT_UPLOAD%" mkdir "%OUT_UPLOAD%"
 if not exist "%OUT_ARCHIVE%" mkdir "%OUT_ARCHIVE%"
 
 echo Compiling FolderSyncer.exe ...
-"%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%OUT_UPLOAD%\FolderSyncer.exe" /reference:System.dll /reference:System.Core.dll "%SRC%\*.cs"
+"%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 /out:"%OUT_UPLOAD%\FolderSyncer.exe" /reference:System.dll /reference:System.Core.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll "%SRC%\*.cs"
 if errorlevel 1 goto :failed
 
 copy /y "%OUT_UPLOAD%\FolderSyncer.exe" "%OUT_ARCHIVE%\FolderSyncer.exe" >nul

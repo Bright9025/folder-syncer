@@ -13,7 +13,7 @@
 
 > 无安装 · 无第三方依赖 · 无窗口 · 无托盘 · 无弹窗
 
-> 当前版本：**v1.0.0** · [GitHub Releases](https://github.com/Bright9025/folder-syncer/releases)
+> 当前版本：**v1.1.0** · [GitHub Releases](https://github.com/Bright9025/folder-syncer/releases)
 
 </div>
 
@@ -29,6 +29,9 @@
 - 🚫 **默认不删别人的文件** – 只清理自己上传过、后来在本地被删掉的文件；服务器上原有文件默认不动。
 - 🕒 **自动运行** – 自带计划任务注册脚本：登录后触发 + 每天定时 / 每 N 分钟，命令行带 `--sync` 或 `--archive`，完全静默。
 - 📝 **只写文件不打扰** – 所有结果写到 `logs\last-run.txt`、`logs\archive-report.txt` 和按天切分的日志；程序里没有任何窗口、托盘图标或 MessageBox。
+- 🧮 **内容哈希校验** – 上传端按 SHA256 记账，保存端下载后重算比对，**一致才删服务器副本**；传输截断或损坏会被拦下，服务器文件保留。
+- 📏 **单文件大小上限** – `max_file_mb` 设个值，超过的文件自动跳过并在日志里列出，避免大文件把服务器塞满、把同步拖慢。
+- 🔄 **自动更新** – 可从 GitHub Releases 检查新版本，下载后**下次启动自动替换**（旧版本保留可回滚），ini 里一个开关控制。
 
 ## 🧭 三端架构
 
@@ -189,6 +192,18 @@ remote = /你的目录
 | `repeat_minutes` | 每隔 N 分钟跑一次（0 = 不重复） |
 | `task_name` | 计划任务名字 |
 
+### `[update]`
+
+| 键 | 说明 |
+| --- | --- |
+| `enabled` | 是否自动检查更新，默认 `true` |
+| `repo` | 仓库，默认 `Bright9025/folder-syncer` |
+| `check_hours` | 两次检查的最小间隔（小时），默认 24 |
+| `asset` | 取哪个发布包：`auto`（按当前角色）/ `upload` / `archive` |
+
+> 更新只在本次同步/归档**结束之后**检查，下载到 `updates\v<版本>\`，**下一次运行开始时**才替换 exe（旧文件保留为 `FolderSyncer.exe.old`）。
+> 检查失败、下载失败、替换失败都只写日志，**绝不影响同步本身**。
+
 ### `[job:任务名]`
 
 | 键 | 说明 |
@@ -201,6 +216,8 @@ remote = /你的目录
 | `delete_to_trash` / `trash_dir` / `trash_keep_days` | 回收站开关、目录、保留天数 |
 | `exclude` / `include` | 排除 / 包含规则，分号分隔 |
 | `follow_links` | 是否跟随符号链接与目录联接，默认 `false` |
+| `max_file_mb` | 单文件大小上限（MB），`0` = 不限制；超过的自动跳过 |
+| `verify_hash` | 是否做内容哈希校验，默认 `true` |
 
 ## 📜 已归档清单
 
@@ -215,6 +232,17 @@ a.txt	14	639312164783098361
 - 只有保存端会写它；上传端只读。
 - 上传端规则：本地没变 **且** 服务器上没有 **且** 清单里有 → 跳过（已被归档）。
 - 删掉清单不会丢数据，只会让上传端在服务器缺失时重传一次。
+
+### 哈希清单
+
+上传端每次上传成功后会算一遍该文件的 SHA256（在发送过程中顺带计算，不额外读盘），写入服务器上的
+`_foldersyncer\hash-<目录名>.tsv`。保存端下载时边写边算，和这份记录比对：
+
+- 一致 → 删除服务器副本、写进已归档清单、从哈希清单里划掉该条
+- 不一致 → **保留服务器文件**、本次记为错误、日志里写明两个哈希值
+
+哈希结果同时缓存在本地 `state\` 里（按 大小 + 修改时间 命中），没变过的文件不会重复计算。
+首次开启 `verify_hash` 时会把所有文件读一遍，之后都是增量。
 
 ## 🛠️ 命令行
 
@@ -235,7 +263,7 @@ a.txt	14	639312164783098361
 code\build.bat                     :: 编译到 release\upload 和 release\archive
 code\devtools\run-tests.ps1        :: 上传端自测（MLSD/MFMT/回退/未加密跳过）
 code\devtools\run-tests-3tier.ps1  :: 三端自测（上传 -> 归档 -> 不重传）
-powershell -File code\pack-release.ps1 -Version 1.0.0   :: 打 3 个 Releases 包 -> dist\v1.0.0\
+powershell -File code\pack-release.ps1 -Version 1.1.0   :: 打 3 个 Releases 包 -> dist\v1.1.0\
 ```
 
 `code\devtools\MockFtpServer.cs` 是一个最小 FTP 服务器（支持 MLSD/MFMT/可选 TLS），测试脚本会自动编译并启动它，全部在本机完成，不会碰真实服务器。

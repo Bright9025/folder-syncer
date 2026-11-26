@@ -77,6 +77,9 @@ namespace FolderSyncer
             }
             foreach (string w in cfg.Warnings) Log.Warn("配置提醒：" + w);
 
+            // 上次下载的新版本在这里就位（本次仍用旧进程跑完）
+            Updater.ApplyPending(exePath);
+
             if (install)
             {
                 bool ok;
@@ -197,6 +200,7 @@ namespace FolderSyncer
             report.AppendLine(tail);
             Log.Info("===== 同步结束：" + tail.Replace("总计：", "") + " =====");
             WriteReport(cfg.LogDirAbs, "last-run.txt", report.ToString());
+            Updater.CheckAndDownload(cfg, false);
             return errors == 0 ? 0 : 1;
         }
 
@@ -268,6 +272,7 @@ namespace FolderSyncer
             report.AppendLine(tail);
             Log.Info("===== 归档结束：" + tail.Replace("总计：", "") + " =====");
             WriteReport(cfg.LogDirAbs, "archive-report.txt", report.ToString());
+            Updater.CheckAndDownload(cfg, true);
             return errors == 0 ? 0 : 1;
         }
 

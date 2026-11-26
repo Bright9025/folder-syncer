@@ -13,7 +13,7 @@ A silent, popup-free Windows directory sync tool: push folders to your own serve
 
 > No installer · No third-party dependencies · No windows · No tray icon · No dialogs
 
-> Current version: **v1.0.0** · [GitHub Releases](https://github.com/Bright9025/folder-syncer/releases)
+> Current version: **v1.1.0** · [GitHub Releases](https://github.com/Bright9025/folder-syncer/releases)
 
 </div>
 
@@ -29,6 +29,9 @@ A silent, popup-free Windows directory sync tool: push folders to your own serve
 - 🚫 **Never deletes files it did not upload** – Only files this tool uploaded and that were later deleted locally are cleaned up.
 - 🕒 **Unattended** – Ships task-registration scripts: logon trigger plus daily times or "every N minutes", running with `--sync` or `--archive` and completely silent.
 - 📝 **Files only, no interruptions** – Results go to `logs\last-run.txt`, `logs\archive-report.txt` and daily logs. There is no window, tray icon or MessageBox in the program.
+- 🧮 **SHA256 verification** – The uploader records a hash per file, the archiver recomputes it after download and only deletes the server copy when they match. Truncated or corrupted transfers are caught and the server file is kept.
+- 📏 **Per-file size limit** – `max_file_mb` skips anything bigger and lists it in the log, so one huge file cannot fill the server or stall a run.
+- 🔄 **Auto-update** – Optionally checks GitHub Releases, downloads the matching package and swaps the exe on the next start (the previous binary is kept for rollback). One switch in the ini.
 
 ## 🧭 Three-tier design
 
@@ -189,6 +192,18 @@ The agent only speaks **explicit FTPS** (`AUTH TLS` → `PBSZ` / `PROT P`, still
 | `repeat_minutes` | Repeat every N minutes (0 = never) |
 | `task_name` | Scheduled task name |
 
+### `[update]`
+
+| Key | Meaning |
+| --- | --- |
+| `enabled` | Check for updates automatically, default `true` |
+| `repo` | Repository, default `Bright9025/folder-syncer` |
+| `check_hours` | Minimum interval between checks (hours), default 24 |
+| `asset` | Which package: `auto` (by role) / `upload` / `archive` |
+
+> The check happens **after** a sync/archive run, downloads into `updates\v<version>\`, and the exe is replaced at the **start of the next run** (the old binary stays as `FolderSyncer.exe.old`).
+> Check, download and swap failures are logged only and never block the sync itself.
+
 ### `[job:name]`
 
 | Key | Meaning |
@@ -201,6 +216,8 @@ The agent only speaks **explicit FTPS** (`AUTH TLS` → `PBSZ` / `PROT P`, still
 | `delete_to_trash` / `trash_dir` / `trash_keep_days` | Trash behaviour |
 | `exclude` / `include` | Semicolon-separated glob rules |
 | `follow_links` | Follow symlinks/junctions, default `false` |
+| `max_file_mb` | Per-file size limit in MB (`0` = unlimited); larger files are skipped |
+| `verify_hash` | SHA256 verification, default `true` |
 
 ## 📜 Archived manifest
 
@@ -215,6 +232,17 @@ sub/b.txt	6	639312164783098361
 - Only the archiver writes it; the uploader just reads it.
 - Uploader rule: unchanged locally **and** missing on the server **and** present in the manifest → skip (already archived).
 - Deleting the manifest loses no data; the uploader would just re-send files that are missing on the server.
+
+### Hash journal
+
+After each successful upload the uploader computes the file SHA256 (while streaming, no second read) and writes it to
+`_foldersyncer\hash-<folder>.tsv` on the server. The archiver hashes what it downloads and compares:
+
+- match → delete the server copy, record it in the manifest, drop it from the hash journal
+- mismatch → **keep the server file**, count an error, log both hashes
+
+Hashes are also cached in `state\` keyed by size + modification time, so unchanged files are never re-hashed.
+The first run after enabling `verify_hash` reads every file once.
 
 ## 🛠️ Command line
 
@@ -235,7 +263,7 @@ sub/b.txt	6	639312164783098361
 code\build.bat                     :: build into release\upload and release\archive
 code\devtools\run-tests.ps1        :: uploader tests (MLSD/MFMT/fallback/unencrypted skip)
 code\devtools\run-tests-3tier.ps1  :: three-tier tests (upload -> archive -> no re-upload)
-powershell -File code\pack-release.ps1 -Version 1.0.0   :: three release zips -> dist\v1.0.0\
+powershell -File code\pack-release.ps1 -Version 1.1.0   :: three release zips -> dist\v1.1.0\
 ```
 
 `code\devtools\MockFtpServer.cs` is a minimal FTP server (MLSD, MFMT, optional TLS). The test scripts build and launch it locally, so nothing touches a real server.

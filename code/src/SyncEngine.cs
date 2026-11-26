@@ -22,6 +22,7 @@ namespace FolderSyncer
         public int Skipped;
         public int Trashed;
         public int Archived;
+        public int SkippedBig;
         public int Deleted;
         public int Errors;
         public int Dirs;
@@ -36,18 +37,25 @@ namespace FolderSyncer
         public string Summary()
         {
             string s = string.Format(CultureInfo.InvariantCulture,
-                "上传 {0} 个 / {1}，跳过 {2}（其中已归档 {8}），回收 {3}，删除 {4}，新建目录 {5}，错误 {6}，耗时 {7}",
+                "上传 {0} 个 / {1}，跳过 {2}（其中已归档 {8}），回收 {3}，删除 {4}，新建目录 {5}，错误 {6}，耗时 {7}" + (SkippedBig > 0 ? "，超限跳过 " + SkippedBig + " 个" : ""),
                 Uploaded, Util.FormatBytes(Bytes), Skipped, Trashed, Deleted, Dirs, Errors, Util.FormatSpan(Elapsed), Archived);
             if (Message.Length > 0) s += "（" + Message + "）";
             return s;
         }
     }
 
+    internal sealed class StateEntry
+    {
+        public long Size;
+        public long Ticks;
+        public string Hash = "";
+    }
+
     /// <summary>记录「上次同步时本地文件长什么样」的本地状态，用于增量判断。</summary>
     internal sealed class StateStore
     {
         private readonly string _path;
-        private readonly Dictionary<string, long[]> _map = new Dictionary<string, long[]>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, StateEntry> _map = new Dictionary<string, StateEntry>(StringComparer.OrdinalIgnoreCase);
         public bool Loaded;
         public int Count { get { return _map.Count; } }
 
@@ -56,23 +64,29 @@ namespace FolderSyncer
             _path = path;
         }
 
-        public bool TryGet(string rel, out long size, out long ticks)
+        public bool TryGet(string rel, out long size, out long ticks, out string hash)
         {
-            long[] v;
+            StateEntry v;
             if (_map.TryGetValue(rel, out v))
             {
-                size = v[0];
-                ticks = v[1];
+                size = v.Size;
+                ticks = v.Ticks;
+                hash = v.Hash;
                 return true;
             }
             size = 0;
             ticks = 0;
+            hash = "";
             return false;
         }
 
-        public void Set(string rel, long size, long ticks)
+        public void Set(string rel, long size, long ticks, string hash)
         {
-            _map[rel] = new long[] { size, ticks };
+            StateEntry e = new StateEntry();
+            e.Size = size;
+            e.Ticks = ticks;
+            e.Hash = hash == null ? "" : hash;
+            _map[rel] = e;
         }
 
         public void Remove(string rel)
@@ -97,7 +111,13 @@ namespace FolderSyncer
                         long sz, tk;
                         if (long.TryParse(p[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out sz) &&
                             long.TryParse(p[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out tk))
-                            _map[p[0]] = new long[] { sz, tk };
+                        {
+                            StateEntry e = new StateEntry();
+                            e.Size = sz;
+                            e.Ticks = tk;
+                            e.Hash = p.Length >= 4 ? p[3].Trim() : "";
+                            _map[p[0]] = e;
+                        }
                     }
                     Loaded = true;
                 }
@@ -115,11 +135,12 @@ namespace FolderSyncer
                 string dir = Path.GetDirectoryName(_path);
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
                 StringBuilder sb = new StringBuilder();
-                foreach (KeyValuePair<string, long[]> kv in _map)
+                foreach (KeyValuePair<string, StateEntry> kv in _map)
                 {
                     sb.Append(kv.Key).Append('\t')
-                      .Append(kv.Value[0].ToString(CultureInfo.InvariantCulture)).Append('\t')
-                      .Append(kv.Value[1].ToString(CultureInfo.InvariantCulture)).Append("\r\n");
+                      .Append(kv.Value.Size.ToString(CultureInfo.InvariantCulture)).Append('\t')
+                      .Append(kv.Value.Ticks.ToString(CultureInfo.InvariantCulture)).Append('\t')
+                      .Append(kv.Value.Hash).Append("\r\n");
                 }
                 string tmp = _path + ".tmp";
                 File.WriteAllText(tmp, sb.ToString(), new UTF8Encoding(false));
@@ -140,7 +161,6 @@ namespace FolderSyncer
             }
         }
     }
-
     internal sealed class SyncEngine
     {
         private readonly AppConfig _cfg;
@@ -186,11 +206,26 @@ namespace FolderSyncer
 
                 Dictionary<string, LocalItem> localFiles = new Dictionary<string, LocalItem>(StringComparer.OrdinalIgnoreCase);
                 List<string> localDirs = new List<string>();
-                WalkLocal(localRoot, "", job, localFiles, localDirs, 0);
+                List<string> tooBig = new List<string>();
+                WalkLocal(localRoot, "", job, localFiles, localDirs, tooBig, 0);
+                if (tooBig.Count > 0)
+                {
+                    res.SkippedBig = tooBig.Count;
+                    Log.Warn("[job:" + job.Name + "] 有 " + tooBig.Count + " 个文件超过 " + job.MaxFileMb + " MB 上限，已跳过：" +
+                             JoinFirst(tooBig, 5));
+                }
 
                 // 服务器上的「已归档清单」：保存端拉走并删掉的文件会记在这里，用来避免重传
                 string manifestPath = Manifest.PathFor(_cfg, remoteRoot);
                 Manifest manifest = Manifest.Load(ftp, manifestPath, _cfg.StateDirAbs);
+
+                // 上传端写在服务器上的哈希清单（保存端用来验证下载内容）
+                HashJournal journal = new HashJournal();
+                if (job.VerifyHash)
+                {
+                    string hashPath = HashJournal.PathFor(_cfg, remoteRoot);
+                    journal = HashJournal.Load(ftp, hashPath, _cfg.StateDirAbs);
+                }
 
                 Dictionary<string, RemoteEntry> remote = RemoteTree.Walk(ftp, remoteRoot, SkipMetaDirs(job));
                 Log.Info("[job:" + job.Name + "] 本地文件 " + localFiles.Count + " 个，服务器文件 " + CountFiles(remote) + " 个，" +
@@ -221,7 +256,8 @@ namespace FolderSyncer
                     }
 
                     long stSize, stTicks;
-                    bool known = state.TryGet(rel, out stSize, out stTicks);
+                    string stHash;
+                    bool known = state.TryGet(rel, out stSize, out stTicks, out stHash);
                     bool unchangedLocal = known && stSize == it.Size && stTicks == it.Ticks;
                     bool remoteOk = re != null && remoteSize == it.Size;
 
@@ -245,12 +281,13 @@ namespace FolderSyncer
                         res.Uploaded++;
                         res.Bytes += it.Size;
                         Log.Info("[job:" + job.Name + "] 演练-上传 " + rel + "（" + Util.FormatBytes(it.Size) + (re == null ? "，服务器缺失" : "，内容有变化") + "）");
-                        state.Set(rel, it.Size, it.Ticks);
+                        state.Set(rel, it.Size, it.Ticks, "");
                         continue;
                     }
 
                     string abs = Util.CombineRemote(remoteRoot, rel);
-                    bool ok = UploadWithRetry(ftp, it, abs, rel);
+                    string hash;
+                    bool ok = UploadWithRetry(ftp, it, abs, rel, out hash);
                     if (ok)
                     {
                         FileInfo fi = new FileInfo(it.FullPath);
@@ -259,8 +296,13 @@ namespace FolderSyncer
                         {
                             Log.Warn("[job:" + job.Name + "] " + rel + " 在上传过程中被改动，本次不计入基线，下次会重传");
                             state.Remove(rel);
+                            journal.Remove(rel);
                         }
-                        else state.Set(rel, it.Size, it.Ticks);
+                        else
+                        {
+                            state.Set(rel, it.Size, it.Ticks, hash);
+                            if (job.VerifyHash) journal.Set(rel, it.Size, hash);
+                        }
                         res.Uploaded++;
                         res.Bytes += it.Size;
                         Log.Info("[job:" + job.Name + "] 上传 " + rel + "（" + Util.FormatBytes(it.Size) + "）");
@@ -333,6 +375,7 @@ namespace FolderSyncer
                 }
 
                 if (!dryRun) state.Save();
+                if (!dryRun && job.VerifyHash && journal.Changed) journal.Save(ftp, _cfg.StateDirAbs);
                 res.Message = firstRun ? "首次运行：只上传不删除，已建立基线" : "";
             }
             catch (FtpNoEncryptionException ex)
@@ -358,6 +401,14 @@ namespace FolderSyncer
             return res;
         }
 
+        private static string JoinFirst(List<string> items, int max)
+        {
+            if (items.Count <= max) return string.Join("、", items.ToArray());
+            List<string> head = items.GetRange(0, max);
+            head.Add("等 " + items.Count + " 个");
+            return string.Join("、", head.ToArray());
+        }
+
         private static int CountFiles(Dictionary<string, RemoteEntry> map)
         {
             int n = 0;
@@ -365,15 +416,16 @@ namespace FolderSyncer
             return n;
         }
 
-        private bool UploadWithRetry(FtpClient ftp, LocalItem it, string absRemote, string rel)
+        private bool UploadWithRetry(FtpClient ftp, LocalItem it, string absRemote, string rel, out string hash)
         {
+            hash = "";
             int attempts = Math.Max(1, _cfg.General.MaxRetries);
             for (int i = 1; i <= attempts; i++)
             {
                 try
                 {
                     ftp.EnsureRemoteDir(Util.RemoteParent(absRemote));
-                    ftp.UploadFile(it.FullPath, absRemote, null);
+                    ftp.UploadFile(it.FullPath, absRemote, null, out hash);
                     return true;
                 }
                 catch (Exception ex)
@@ -477,7 +529,7 @@ namespace FolderSyncer
             return rel.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase);
         }
         private void WalkLocal(string dir, string relPrefix, JobConfig job,
-                               Dictionary<string, LocalItem> files, List<string> dirs, int depth)
+                               Dictionary<string, LocalItem> files, List<string> dirs, List<string> tooBig, int depth)
         {
             if (depth > 128) return;
             string[] entries;
@@ -502,7 +554,7 @@ namespace FolderSyncer
                 {
                     if (isLink && !job.FollowLinks) continue;
                     dirs.Add(rel);
-                    WalkLocal(p, rel, job, files, dirs, depth + 1);
+                    WalkLocal(p, rel, job, files, dirs, tooBig, depth + 1);
                 }
                 else
                 {
@@ -511,6 +563,11 @@ namespace FolderSyncer
                     try
                     {
                         FileInfo fi = new FileInfo(p);
+                        if (job.MaxFileMb > 0 && fi.Length > (long)job.MaxFileMb * 1024L * 1024L)
+                        {
+                            tooBig.Add(rel + "（" + Util.FormatBytes(fi.Length) + "）");
+                            continue;
+                        }
                         LocalItem it = new LocalItem();
                         it.Rel = rel;
                         it.FullPath = p;

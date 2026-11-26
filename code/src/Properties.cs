@@ -5,5 +5,5 @@ using System.Reflection;
 [assembly: AssemblyProduct("Folder Syncer")]
 [assembly: AssemblyCompany("Bright9025")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Bright9025")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]

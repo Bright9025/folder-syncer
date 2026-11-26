@@ -15,6 +15,7 @@ code/devtools/*.exe
 _tests/
 _3t/
 _rt/
+_newfeat/
 _probe/
 *.part
 *.synctmp
@@ -36,3 +37,6 @@ dist/
 
 # ---- 本地的 GitHub 仓库信息（不上传）----
 GITHUB.md
+
+# ---- 自动更新下载的临时文件 ----
+updates/
